@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os/exec"
 	"path"
+	"strings"
 	"sync"
 
 	homedir "github.com/mitchellh/go-homedir"
@@ -20,6 +21,10 @@ var gitCommand = "git"
 // we do, we update the repo, else we do a fresh clone
 func backUp(backupDir string, repo *Repository, wg *sync.WaitGroup) ([]byte, error) {
 	defer wg.Done()
+
+	if strings.HasPrefix(backupDir, "gitlab:///") || strings.HasPrefix(backupDir, "github:///") {
+		backupDir = "/tmp/gitbackupworkspace"
+	}
 
 	repoDir := path.Join(backupDir, repo.Namespace, repo.Name)
 	_, err := appFS.Stat(repoDir)
@@ -45,6 +50,11 @@ func backUp(backupDir string, repo *Repository, wg *sync.WaitGroup) ([]byte, err
 
 		cmd := execCommand(gitCommand, "clone", repo.CloneURL, repoDir)
 		stdoutStderr, err = cmd.CombinedOutput()
+	}
+
+	if strings.HasPrefix(backupDir, "gitlab:///") || strings.HasPrefix(backupDir, "github:///") {
+		// setup git remote
+		// git push
 	}
 
 	return stdoutStderr, err
