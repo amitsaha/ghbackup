@@ -70,7 +70,7 @@ func main() {
 			tokens <- true
 			wg.Add(1)
 			go func(repo *Repository) {
-				stdoutStderr, err := backUp(backupDir, repo, &wg)
+				stdoutStderr, err := backUp(client, backupDir, repo, &wg)
 				if err != nil {
 					log.Printf("Error backing up %s: %s\n", repo.Name, stdoutStderr)
 				}

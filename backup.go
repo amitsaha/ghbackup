@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"log"
 	"net/url"
 	"os/exec"
@@ -8,6 +10,9 @@ import (
 	"strings"
 	"sync"
 
+	gitlab "github.com/xanzy/go-gitlab"
+
+	"github.com/google/go-github/github"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/afero"
 )
@@ -19,7 +24,7 @@ var gitCommand = "git"
 
 // Check if we have a copy of the repo already, if
 // we do, we update the repo, else we do a fresh clone
-func backUp(backupDir string, repo *Repository, wg *sync.WaitGroup) ([]byte, error) {
+func backUp(client interface{}, backupDir string, repo *Repository, wg *sync.WaitGroup) ([]byte, error) {
 	defer wg.Done()
 
 	if strings.HasPrefix(backupDir, "gitlab:///") || strings.HasPrefix(backupDir, "github:///") {
@@ -52,9 +57,11 @@ func backUp(backupDir string, repo *Repository, wg *sync.WaitGroup) ([]byte, err
 		stdoutStderr, err = cmd.CombinedOutput()
 	}
 
-	if strings.HasPrefix(backupDir, "gitlab:///") || strings.HasPrefix(backupDir, "github:///") {
-		// setup git remote
-		// git push
+	if strings.HasPrefix(backupDir, "gitlab:///") {
+		handleSyncGitlab(client, repo, backupDir)
+	}
+	if strings.HasPrefix(backupDir, "github:///") {
+		handleSyncGithub(client, repo, backupDir)
 	}
 
 	return stdoutStderr, err
@@ -90,4 +97,31 @@ func setupBackupDir(backupDir string, service string, githostURL string) string 
 		}
 	}
 	return backupDir
+}
+
+func handleSyncGitlab(client interface{}, repo *Repository, target string) {
+
+	if client == nil {
+		log.Fatalf("Couldn't acquire a client to talk to  gitlab")
+	}
+
+	projectName := fmt.Sprintf("%s/%s", repo.Namespace, repo.Name)
+	project, _, err := client.(*gitlab.Client).Projects.GetProject(projectName, nil)
+	if err != nil {
+		log.Fatal("Error retrieving username", err.Error())
+	}
+	fmt.Printf("%v\n", project)
+}
+
+func handleSyncGithub(client interface{}, repo *Repository, target string) {
+	if client == nil {
+		log.Fatalf("Couldn't acquire a client to talk to github")
+	}
+
+	ctx := context.Background()
+	user, _, err := client.(*github.Client).Users.Get(ctx, "")
+	if err != nil {
+		log.Fatal("Error retrieving username", err.Error())
+	}
+
 }
