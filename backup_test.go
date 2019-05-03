@@ -29,6 +29,7 @@ func fakeCloneCommand(command string, args ...string) (cmd *exec.Cmd) {
 
 func TestBackup(t *testing.T) {
 	var wg sync.WaitGroup
+
 	repo := Repository{Name: "testrepo", CloneURL: "git://foo.com/foo"}
 	backupDir := "/tmp/backupdir"
 

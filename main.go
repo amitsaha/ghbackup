@@ -15,6 +15,7 @@ var gitHostToken string
 var useHTTPSClone *bool
 var ignorePrivate *bool
 var gitHostUsername string
+var gitHostURL *string
 
 func main() {
 
@@ -30,7 +31,7 @@ func main() {
 
 	// Generic flags
 	service := flag.String("service", "", "Git Hosted Service Name (github/gitlab)")
-	githostURL := flag.String("githost.url", "", "DNS of the custom Git host")
+	gitHostURL = flag.String("githost.url", "", "DNS of the custom Git host")
 	syncTarget := flag.String("target", "", "Sync target")
 	ignorePrivate = flag.Bool("ignore-private", false, "Ignore private repositories/projects")
 	useHTTPSClone = flag.Bool("use-https-clone", false, "Use HTTPS for cloning instead of SSH")
@@ -50,11 +51,13 @@ func main() {
 
 	var backupDir string
 	if len(*syncTarget) == 0 || strings.HasPrefix(*syncTarget, "file:///") {
-		backupDir = setupBackupDir(*syncTarget, *service, *githostURL)
+		backupDir = setupBackupDir(*syncTarget, *service, *gitHostURL)
+	} else {
+		backupDir = *syncTarget
 	}
 
 	tokens := make(chan bool, MaxConcurrentClones)
-	client := newClient(*service, *githostURL)
+	client := newClient(*service, *gitHostURL)
 
 	gitHostUsername = getUsername(client, *service)
 
@@ -70,7 +73,7 @@ func main() {
 			tokens <- true
 			wg.Add(1)
 			go func(repo *Repository) {
-				stdoutStderr, err := backUp(client, backupDir, repo, &wg)
+				stdoutStderr, err := backUp(backupDir, repo, &wg)
 				if err != nil {
 					log.Printf("Error backing up %s: %s\n", repo.Name, stdoutStderr)
 				}

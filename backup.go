@@ -24,12 +24,16 @@ var gitCommand = "git"
 
 // Check if we have a copy of the repo already, if
 // we do, we update the repo, else we do a fresh clone
-func backUp(client interface{}, backupDir string, repo *Repository, wg *sync.WaitGroup) ([]byte, error) {
+func backUp(backupDir string, repo *Repository, wg *sync.WaitGroup) ([]byte, error) {
 	defer wg.Done()
 
+	var syncLocation string
+
 	if strings.HasPrefix(backupDir, "gitlab:///") || strings.HasPrefix(backupDir, "github:///") {
+		syncLocation = backupDir
 		backupDir = "/tmp/gitbackupworkspace"
 	}
+	log.Printf("backupdir: %v\n", backupDir)
 
 	repoDir := path.Join(backupDir, repo.Namespace, repo.Name)
 	_, err := appFS.Stat(repoDir)
@@ -57,11 +61,11 @@ func backUp(client interface{}, backupDir string, repo *Repository, wg *sync.Wai
 		stdoutStderr, err = cmd.CombinedOutput()
 	}
 
-	if strings.HasPrefix(backupDir, "gitlab:///") {
-		handleSyncGitlab(client, repo, backupDir)
+	if strings.HasPrefix(syncLocation, "gitlab:///") {
+		handleSyncGitlab(repo, syncLocation)
 	}
-	if strings.HasPrefix(backupDir, "github:///") {
-		handleSyncGithub(client, repo, backupDir)
+	if strings.HasPrefix(syncLocation, "github:///") {
+		handleSyncGithub(repo, syncLocation)
 	}
 
 	return stdoutStderr, err
@@ -99,29 +103,40 @@ func setupBackupDir(backupDir string, service string, githostURL string) string 
 	return backupDir
 }
 
-func handleSyncGitlab(client interface{}, repo *Repository, target string) {
+func handleSyncGitlab(repo *Repository, target string) {
 
+	client := newClient("gitlab", *gitHostURL)
 	if client == nil {
 		log.Fatalf("Couldn't acquire a client to talk to  gitlab")
 	}
 
 	projectName := fmt.Sprintf("%s/%s", repo.Namespace, repo.Name)
-	project, _, err := client.(*gitlab.Client).Projects.GetProject(projectName, nil)
-	if err != nil {
-		log.Fatal("Error retrieving username", err.Error())
+	project, resp, err := client.(*gitlab.Client).Projects.GetProject(projectName, nil)
+	if err != nil && resp.StatusCode != 404 {
+		log.Fatal("Error checking if project exists", err.Error())
+	}
+	if resp.StatusCode == 404 {
+		log.Printf("Creating repo in gitlab: %s\n", projectName)
 	}
 	fmt.Printf("%v\n", project)
 }
 
-func handleSyncGithub(client interface{}, repo *Repository, target string) {
+func handleSyncGithub(repo *Repository, target string) {
+	client := newClient("github", *gitHostURL)
 	if client == nil {
 		log.Fatalf("Couldn't acquire a client to talk to github")
 	}
 
+	owner := repo.Namespace
+	repoName := repo.Name
 	ctx := context.Background()
-	user, _, err := client.(*github.Client).Users.Get(ctx, "")
-	if err != nil {
-		log.Fatal("Error retrieving username", err.Error())
+	r, resp, err := client.(*github.Client).Repositories.Get(ctx, owner, repoName)
+	if err != nil && resp.StatusCode != 404 {
+		log.Fatal("Error checking if project exists", err.Error())
 	}
 
+	if resp.StatusCode == 404 {
+		log.Printf("Creating repo in github: %s/%s\n", owner, repoName)
+	}
+	fmt.Printf("repo exists: %v\n", r)
 }
