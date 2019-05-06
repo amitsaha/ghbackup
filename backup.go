@@ -62,10 +62,10 @@ func backUp(backupDir string, repo *Repository, wg *sync.WaitGroup) ([]byte, err
 	}
 
 	if strings.HasPrefix(syncLocation, "gitlab:///") {
-		handleSyncGitlab(repo, syncLocation)
+		handleSyncGitlab(repo, backupDir, syncLocation)
 	}
 	if strings.HasPrefix(syncLocation, "github:///") {
-		handleSyncGithub(repo, syncLocation)
+		handleSyncGithub(repo, backupDir, syncLocation)
 	}
 
 	return stdoutStderr, err
@@ -103,7 +103,7 @@ func setupBackupDir(backupDir string, service string, githostURL string) string 
 	return backupDir
 }
 
-func handleSyncGitlab(repo *Repository, target string) {
+func handleSyncGitlab(repo *Repository, workspace string, target string) {
 
 	client := newClient("gitlab", *gitHostURL)
 	if client == nil {
@@ -116,12 +116,33 @@ func handleSyncGitlab(repo *Repository, target string) {
 		log.Fatal("Error checking if project exists", err.Error())
 	}
 	if resp.StatusCode == 404 {
-		log.Printf("Creating repo in gitlab: %s\n", projectName)
+		log.Printf("Creating project in gitlab: %s\n", projectName)
+
+		// check if namespace is not a username and if it doesn't exist
+		// create it
+		if repo.Namespace != gitHostUsername {
+			_, resp, err := client.(*gitlab.Client).Groups.GetGroup(repo.Namespace)
+			if err != nil && resp.StatusCode != 404 {
+				log.Fatal("Error checking if group exists", err.Error())
+			}
+			if resp.StatusCode == 404 {
+				log.Printf("Creating group in gitlab: %s\n", repo.Namespace)
+				// if it's a private repo, default to a private group
+				// if it's a public repo, default to a public group
+				// FIXME: release notes, perhaps a paramater?
+
+			}
+
+		}
+		// create project
+
 	}
+	// add remote
+	// git push
 	fmt.Printf("%v\n", project)
 }
 
-func handleSyncGithub(repo *Repository, target string) {
+func handleSyncGithub(repo *Repository, workspace string, target string) {
 	client := newClient("github", *gitHostURL)
 	if client == nil {
 		log.Fatalf("Couldn't acquire a client to talk to github")
