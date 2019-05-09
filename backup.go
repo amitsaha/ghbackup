@@ -116,6 +116,10 @@ func handleSyncGitlab(repo *Repository, workspace string, target string) {
 		log.Fatal("Error checking if project exists", err.Error())
 	}
 
+	// FIXME: move this to somewhere else so that we don't do it for every backup
+	// operation
+	gitlabUsername := getUsername(client, "gitlab")
+
 	if resp.StatusCode == 404 {
 
 		log.Printf("Creating project in gitlab: %s\n", projectName)
@@ -124,7 +128,7 @@ func handleSyncGitlab(repo *Repository, workspace string, target string) {
 
 		// check if namespace is not a username and if it doesn't exist
 		// create it
-		if repo.Namespace != gitHostUsername {
+		if repo.Namespace != gitlabUsername {
 			_, resp, err := client.(*gitlab.Client).Groups.GetGroup(repo.Namespace)
 			if err != nil && resp.StatusCode != 404 {
 				log.Fatal("Error checking if group exists", err.Error())
@@ -174,22 +178,41 @@ func handleSyncGitlab(repo *Repository, workspace string, target string) {
 			repoVisibility = gitlab.PublicVisibility
 		}
 		// create project
-		project := gitlab.CreateProjectOptions{
+		pCreateOptions := gitlab.CreateProjectOptions{
 			Name:        &repo.Name,
 			Path:        &repo.Name,
 			NamespaceID: &namespace.ID,
 			Visibility:  &repoVisibility,
 		}
-		p, _, err := client.(*gitlab.Client).Projects.CreateProject(&project)
+		p, _, err := client.(*gitlab.Client).Projects.CreateProject(&pCreateOptions)
 		if err != nil {
 			log.Fatal("Error creating project in GitLab", err.Error())
 		}
-		log.Printf("Gitlab project created: %v\n", p.HTTPURLToRepo)
-
+		project = p
 	}
 	// add remote
-	// git push
-	fmt.Printf("%v\n", project)
+	repoDir := path.Join(workspace, repo.Namespace, repo.Name)
+	var stdoutStderr []byte
+
+	// Add username and token to the clone URL
+	// https://gitlab.com/amitsaha/testproject1 => https://amitsaha:token@gitlab.com/amitsaha/testproject1
+	u, err := url.Parse(project.HTTPURLToRepo)
+	if err != nil {
+		log.Fatalf("Invalid clone URL: %v\n", err)
+	}
+	remoteURL := u.Scheme + "://" + gitlabUsername + ":" + gitlabToken + "@" + u.Host + u.Path
+	cmd := execCommand(gitCommand, "-C", repoDir, "remote", "add", "gitlab", remoteURL)
+	stdoutStderr, err = cmd.CombinedOutput()
+	if err != nil {
+		log.Fatal("Error adding GitLab remote", string(stdoutStderr))
+	}
+
+	cmd = execCommand(gitCommand, "-C", repoDir, "push", "gitlab")
+	stdoutStderr, err = cmd.CombinedOutput()
+	if err != nil {
+		log.Fatal("Error pushing to gitlab", string(stdoutStderr))
+	}
+
 }
 
 func handleSyncGithub(repo *Repository, workspace string, target string) {

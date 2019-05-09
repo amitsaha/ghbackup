@@ -43,7 +43,7 @@ func newClient(service string, gitHostURL string) interface{} {
 	}
 
 	if service == "gitlab" {
-		gitlabToken := os.Getenv("GITLAB_TOKEN")
+		gitlabToken = os.Getenv("GITLAB_TOKEN")
 		if gitlabToken == "" {
 			log.Fatal("GITLAB_TOKEN environment variable not set")
 		}

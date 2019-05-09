@@ -12,6 +12,7 @@ import (
 var MaxConcurrentClones = 20
 
 var gitHostToken string
+var gitlabToken string
 var useHTTPSClone *bool
 var ignorePrivate *bool
 var gitHostUsername string
