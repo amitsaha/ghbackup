@@ -33,3 +33,16 @@ func getUsername(client interface{}, service string) string {
 
 	return ""
 }
+
+func getGitHubOrgDetails(org string) *github.Organization {
+	client := newClient("github", *gitHostURL)
+	if client == nil {
+		log.Fatalf("Couldn't acquire a client to talk to  gitlab")
+	}
+	ctx := context.Background()
+	o, _, err := client.(*github.Client).Organizations.Get(ctx, org)
+	if err != nil {
+		log.Fatal("Error retrieving organization details", err.Error())
+	}
+	return o
+}

@@ -115,7 +115,9 @@ func handleSyncGitlab(repo *Repository, workspace string, target string) {
 	if err != nil && resp.StatusCode != 404 {
 		log.Fatal("Error checking if project exists", err.Error())
 	}
+
 	if resp.StatusCode == 404 {
+
 		log.Printf("Creating project in gitlab: %s\n", projectName)
 
 		// check if namespace is not a username and if it doesn't exist
@@ -127,14 +129,60 @@ func handleSyncGitlab(repo *Repository, workspace string, target string) {
 			}
 			if resp.StatusCode == 404 {
 				log.Printf("Creating group in gitlab: %s\n", repo.Namespace)
-				// if it's a private repo, default to a private group
-				// if it's a public repo, default to a public group
+				// if the org has any private repos, default to a private group
+
 				// FIXME: release notes, perhaps a paramater?
+				githubOrgDetails := getGitHubOrgDetails(repo.Namespace)
+				var visibility gitlab.VisibilityValue
+				if *githubOrgDetails.TotalPrivateRepos > 0 {
+					visibility = gitlab.PrivateVisibility
+				} else {
+					visibility = gitlab.PublicVisibility
+				}
+
+				groupDesc := fmt.Sprintf("Imported from github %s", repo.Namespace)
+
+				// future work
+				lfsEnabled := false
+
+				group := gitlab.CreateGroupOptions{
+					Name:        &repo.Namespace,
+					Path:        &repo.Namespace,
+					Visibility:  &visibility,
+					Description: &groupDesc,
+					LFSEnabled:  &lfsEnabled,
+				}
+				g, _, err := client.(*gitlab.Client).Groups.CreateGroup(&group)
+				if err != nil {
+					log.Fatal("Error creating group", err.Error())
+				}
+				log.Printf("GitLab group created: %v\n", g)
 
 			}
-
+		}
+		var namespace *gitlab.Namespace
+		namespace, _, err := client.(*gitlab.Client).Namespaces.GetNamespace(repo.Namespace)
+		if err != nil {
+			log.Fatal("Error querying namespace", err.Error())
+		}
+		var repoVisibility gitlab.VisibilityValue
+		if repo.Private {
+			repoVisibility = gitlab.PrivateVisibility
+		} else {
+			repoVisibility = gitlab.PublicVisibility
 		}
 		// create project
+		project := gitlab.CreateProjectOptions{
+			Name:        &repo.Name,
+			Path:        &repo.Name,
+			NamespaceID: &namespace.ID,
+			Visibility:  &repoVisibility,
+		}
+		p, _, err := client.(*gitlab.Client).Projects.CreateProject(&project)
+		if err != nil {
+			log.Fatal("Error creating project in GitLab", err.Error())
+		}
+		log.Printf("Gitlab project created: %v\n", p.HTTPURLToRepo)
 
 	}
 	// add remote
