@@ -119,6 +119,8 @@ func handleSyncGitlab(repo *Repository, workspace string, target string) {
 	if resp.StatusCode == 404 {
 
 		log.Printf("Creating project in gitlab: %s\n", projectName)
+		log.Printf(repo.Namespace)
+		log.Printf(gitHostUsername)
 
 		// check if namespace is not a username and if it doesn't exist
 		// create it
