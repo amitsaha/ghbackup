@@ -201,10 +201,33 @@ func handleSyncGitlab(repo *Repository, workspace string, target string) {
 		log.Fatalf("Invalid clone URL: %v\n", err)
 	}
 	remoteURL := u.Scheme + "://" + gitlabUsername + ":" + gitlabToken + "@" + u.Host + u.Path
-	cmd := execCommand(gitCommand, "-C", repoDir, "remote", "add", "gitlab", remoteURL)
+
+	// check if remote exists, if yes, use git remote set-url
+	// else add remote
+	cmd := execCommand(gitCommand, "-C", repoDir, "remote")
 	stdoutStderr, err = cmd.CombinedOutput()
 	if err != nil {
-		log.Fatal("Error adding GitLab remote", string(stdoutStderr))
+		log.Fatal("Error listing remotes", string(stdoutStderr))
+	}
+	// FIXME: Windows suport
+	var gitlabRemoteExists bool
+	for _, remote := range strings.Split(string(stdoutStderr), "\n") {
+		if remote == "gitlab" {
+			gitlabRemoteExists = true
+		}
+	}
+	if gitlabRemoteExists {
+		cmd := execCommand(gitCommand, "-C", repoDir, "remote", "set-url", "gitlab", remoteURL)
+		stdoutStderr, err = cmd.CombinedOutput()
+		if err != nil {
+			log.Fatal("Error setting GitLab remote url", string(stdoutStderr))
+		}
+	} else {
+		cmd := execCommand(gitCommand, "-C", repoDir, "remote", "add", "gitlab", remoteURL)
+		stdoutStderr, err = cmd.CombinedOutput()
+		if err != nil {
+			log.Fatal("Error adding GitLab remote", string(stdoutStderr))
+		}
 	}
 
 	cmd = execCommand(gitCommand, "-C", repoDir, "push", "gitlab")
