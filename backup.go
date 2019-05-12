@@ -48,7 +48,7 @@ func backUp(backupDir string, repo *Repository, wg *sync.WaitGroup) ([]byte, err
 	} else if cloneExistsErr == nil && *cleanSync {
 		appFS.RemoveAll(repoDir)
 	}
-	if cloneExistsErr != nil {
+	if cloneExistsErr != nil || *cleanSync {
 		log.Printf("Cloning %s\n", repo.Name)
 		log.Printf("%#v\n", repo)
 
