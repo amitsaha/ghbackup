@@ -105,6 +105,8 @@ func setupBackupDir(backupDir string, service string, githostURL string) string 
 
 func handleSyncGitlab(repo *Repository, workspace string, target string) {
 
+	//FIXME: gitlab username != github username
+
 	client := newClient("gitlab", *gitHostURL)
 	if client == nil {
 		log.Fatalf("Couldn't acquire a client to talk to  gitlab")

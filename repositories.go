@@ -33,6 +33,7 @@ type Repository struct {
 	CloneURL  string
 	Name      string
 	Namespace string
+	Fork      bool
 	Private   bool
 }
 
@@ -58,7 +59,7 @@ func getRepositories(client interface{}, service string, githubRepoType string, 
 					} else {
 						cloneURL = *repo.SSHURL
 					}
-					repositories = append(repositories, &Repository{CloneURL: cloneURL, Name: *repo.Name, Namespace: namespace, Private: *repo.Private})
+					repositories = append(repositories, &Repository{CloneURL: cloneURL, Name: *repo.Name, Namespace: namespace, Fork: *repo.Fork, Private: *repo.Private})
 				}
 			} else {
 				return nil, err

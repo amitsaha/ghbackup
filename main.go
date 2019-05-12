@@ -15,6 +15,7 @@ var gitHostToken string
 var gitlabToken string
 var useHTTPSClone *bool
 var ignorePrivate *bool
+var ignoreForks *bool
 var gitHostUsername string
 var gitHostURL *string
 
@@ -36,6 +37,7 @@ func main() {
 	syncTarget := flag.String("target", "", "Sync target")
 	ignorePrivate = flag.Bool("ignore-private", false, "Ignore private repositories/projects")
 	useHTTPSClone = flag.Bool("use-https-clone", false, "Use HTTPS for cloning instead of SSH")
+	ignoreForks = flag.Bool("--ignore-forks", false, "Ignore repositories which are forks")
 
 	// GitHub specific flags
 	githubRepoType := flag.String("github.repoType", "all", "Repo types to backup (all, owner, member)")
@@ -71,6 +73,9 @@ func main() {
 	} else {
 		log.Printf("Backing up %v repositories now..\n", len(repos))
 		for _, repo := range repos {
+			if repo.Fork && *ignoreForks {
+				continue
+			}
 			tokens <- true
 			wg.Add(1)
 			go func(repo *Repository) {
