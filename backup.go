@@ -28,6 +28,8 @@ func backUp(backupDir string, repo *Repository, wg *sync.WaitGroup) ([]byte, err
 	defer wg.Done()
 
 	var syncLocation string
+	var stdoutStderr []byte
+	var err error
 
 	if strings.HasPrefix(backupDir, "gitlab:///") || strings.HasPrefix(backupDir, "github:///") {
 		syncLocation = backupDir
@@ -36,14 +38,17 @@ func backUp(backupDir string, repo *Repository, wg *sync.WaitGroup) ([]byte, err
 	log.Printf("backupdir: %v\n", backupDir)
 
 	repoDir := path.Join(backupDir, repo.Namespace, repo.Name)
-	_, err := appFS.Stat(repoDir)
+	_, cloneExistsErr := appFS.Stat(repoDir)
+	log.Printf("%s: %v\n", repoDir, cloneExistsErr)
 
-	var stdoutStderr []byte
-	if err == nil {
+	if cloneExistsErr == nil && !*cleanSync {
 		log.Printf("%s exists, updating. \n", repo.Name)
 		cmd := execCommand(gitCommand, "-C", repoDir, "pull")
 		stdoutStderr, err = cmd.CombinedOutput()
-	} else {
+	} else if cloneExistsErr == nil && *cleanSync {
+		appFS.RemoveAll(repoDir)
+	}
+	if cloneExistsErr != nil {
 		log.Printf("Cloning %s\n", repo.Name)
 		log.Printf("%#v\n", repo)
 
@@ -118,6 +123,14 @@ func handleSyncGitlab(repo *Repository, workspace string, target string) {
 		log.Fatal("Error checking if project exists", err.Error())
 	}
 
+	// delete project if this is a clean sync
+	if *cleanSync && resp.StatusCode == 200 {
+		_, err := client.(*gitlab.Client).Projects.DeleteProject(projectName)
+		if err != nil {
+			log.Fatal("Error deleting project in GitLab", err.Error())
+		}
+	}
+
 	// FIXME: move this to somewhere else so that we don't do it for every backup
 	// operation
 	gitlabUsername := getUsername(client, "gitlab")
@@ -140,13 +153,14 @@ func handleSyncGitlab(repo *Repository, workspace string, target string) {
 				// if the org has any private repos, default to a private group
 
 				// FIXME: release notes, perhaps a paramater?
-				githubOrgDetails := getGitHubOrgDetails(repo.Namespace)
+				//githubOrgDetails := getGitHubOrgDetails(repo.Namespace)
 				var visibility gitlab.VisibilityValue
-				if *githubOrgDetails.TotalPrivateRepos > 0 {
-					visibility = gitlab.PrivateVisibility
-				} else {
-					visibility = gitlab.PublicVisibility
-				}
+				visibility = gitlab.PrivateVisibility
+				//if *githubOrgDetails.TotalPrivateRepos > 0 {
+				//	visibility = gitlab.PrivateVisibility
+				//} else {
+				//	visibility = gitlab.PublicVisibility
+				//}
 
 				groupDesc := fmt.Sprintf("Imported from github %s", repo.Namespace)
 
@@ -174,11 +188,13 @@ func handleSyncGitlab(repo *Repository, workspace string, target string) {
 			log.Fatal("Error querying namespace", err.Error())
 		}
 		var repoVisibility gitlab.VisibilityValue
-		if repo.Private {
-			repoVisibility = gitlab.PrivateVisibility
-		} else {
-			repoVisibility = gitlab.PublicVisibility
-		}
+		repoVisibility = gitlab.PrivateVisibility
+
+		// if repo.Private {
+		// 	repoVisibility = gitlab.PrivateVisibility
+		// } else {
+		// 	repoVisibility = gitlab.PublicVisibility
+		// }
 		// create project
 		pCreateOptions := gitlab.CreateProjectOptions{
 			Name:        &repo.Name,
