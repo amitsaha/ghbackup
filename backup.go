@@ -62,7 +62,7 @@ func backUp(backupDir string, repo *Repository, wg *sync.WaitGroup) ([]byte, err
 			repo.CloneURL = u.Scheme + "://" + gitHostUsername + ":" + gitHostToken + "@" + u.Host + u.Path
 		}
 
-		cmd := execCommand(gitCommand, "clone", repo.CloneURL, repoDir)
+		cmd := execCommand(gitCommand, "clone", "--mirror", repo.CloneURL, repoDir)
 		stdoutStderr, err = cmd.CombinedOutput()
 	}
 
@@ -196,9 +196,11 @@ func handleSyncGitlab(repo *Repository, workspace string, target string) {
 		// 	repoVisibility = gitlab.PublicVisibility
 		// }
 		// create project
+		projectDesc := fmt.Sprintf("Backup repo: %s/%s/%s", *gitHostURL, repo.Namespace, repo.Name)
 		pCreateOptions := gitlab.CreateProjectOptions{
 			Name:        &repo.Name,
 			Path:        &repo.Name,
+			Description: &projectDesc,
 			NamespaceID: &namespace.ID,
 			Visibility:  &repoVisibility,
 		}
@@ -248,10 +250,11 @@ func handleSyncGitlab(repo *Repository, workspace string, target string) {
 		}
 	}
 
-	cmd = execCommand(gitCommand, "-C", repoDir, "push", "gitlab")
+	cmd = execCommand(gitCommand, "-C", repoDir, "push", "--mirror", "gitlab")
 	stdoutStderr, err = cmd.CombinedOutput()
+	// FIXME: global error logging
 	if err != nil {
-		log.Fatal("Error pushing to gitlab", string(stdoutStderr))
+		log.Printf("Error pushing to gitlab: %s\n", string(stdoutStderr))
 	}
 
 }
