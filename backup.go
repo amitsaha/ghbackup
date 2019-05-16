@@ -135,7 +135,7 @@ func handleSyncGitlab(repo *Repository, workspace string, target string) {
 	// operation
 	gitlabUsername := getUsername(client, "gitlab")
 
-	if resp.StatusCode == 404 {
+	if resp.StatusCode == 404 || *cleanSync {
 
 		log.Printf("Creating project in gitlab: %s\n", projectName)
 		log.Printf(repo.Namespace)
@@ -148,7 +148,15 @@ func handleSyncGitlab(repo *Repository, workspace string, target string) {
 			if err != nil && resp.StatusCode != 404 {
 				log.Fatal("Error checking if group exists", err.Error())
 			}
-			if resp.StatusCode == 404 {
+
+			// delete group if this is a clean sync
+			if *cleanSync && resp.StatusCode == 200 {
+				_, err := client.(*gitlab.Client).Groups.DeleteGroup(repo.Namespace)
+				if err != nil {
+					log.Fatal("Error deleting group in GitLab", err.Error())
+				}
+			}
+			if resp.StatusCode == 404 || *cleanSync {
 				log.Printf("Creating group in gitlab: %s\n", repo.Namespace)
 				// if the org has any private repos, default to a private group
 
@@ -162,7 +170,7 @@ func handleSyncGitlab(repo *Repository, workspace string, target string) {
 				//	visibility = gitlab.PublicVisibility
 				//}
 
-				groupDesc := fmt.Sprintf("Imported from github %s", repo.Namespace)
+				groupDesc := fmt.Sprintf("Backup from github: %s", repo.Namespace)
 
 				// future work
 				lfsEnabled := false
@@ -196,7 +204,12 @@ func handleSyncGitlab(repo *Repository, workspace string, target string) {
 		// 	repoVisibility = gitlab.PublicVisibility
 		// }
 		// create project
-		projectDesc := fmt.Sprintf("Backup repo: %s/%s/%s", *gitHostURL, repo.Namespace, repo.Name)
+		var projectDesc string
+		if len(*gitHostURL) != 0 {
+			projectDesc = fmt.Sprintf("Backup from github: %s/%s/%s", *gitHostURL, repo.Namespace, repo.Name)
+		} else {
+			projectDesc = fmt.Sprintf("Backup from github: github.com/%s/%s", repo.Namespace, repo.Name)
+		}
 		pCreateOptions := gitlab.CreateProjectOptions{
 			Name:        &repo.Name,
 			Path:        &repo.Name,
