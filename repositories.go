@@ -37,6 +37,12 @@ type Repository struct {
 	Private   bool
 }
 
+// RepositoryFilter is a container for any filters to apply
+// on the obtained repository list
+type RepositoryFilter struct {
+	SkipForks bool
+}
+
 func getRepositories(client interface{}, service string, githubRepoType string, gitlabRepoVisibility string, gitlabProjectType string) ([]*Repository, error) {
 
 	if client == nil {
@@ -116,7 +122,7 @@ func getRepositories(client interface{}, service string, githubRepoType string, 
 					} else {
 						cloneURL = repo.SSHURLToRepo
 					}
-					repositories = append(repositories, &Repository{CloneURL: cloneURL, Name: repo.Name, Namespace: namespace, Private: repo.Public})
+					repositories = append(repositories, &Repository{CloneURL: cloneURL, Name: repo.Name, Namespace: namespace, Private: repo.Public, Fork: repo.ForkedFromProject != nil})
 				}
 			} else {
 				return nil, err
@@ -127,5 +133,19 @@ func getRepositories(client interface{}, service string, githubRepoType string, 
 			options.ListOptions.Page = resp.NextPage
 		}
 	}
+
 	return repositories, nil
+}
+
+func filterRepositories(repos []*Repository, repoFilter *RepositoryFilter) []*Repository {
+	var fRepos []*Repository
+
+	// skip forks if specified
+	for _, repo := range repos {
+		if repo.Fork && repoFilter.SkipForks {
+			continue
+		}
+		fRepos = append(fRepos, repo)
+	}
+	return fRepos
 }

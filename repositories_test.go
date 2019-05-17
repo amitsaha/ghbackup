@@ -111,3 +111,25 @@ func TestGetGitLabRepositories(t *testing.T) {
 		}
 	}
 }
+
+func TestFilterRepositoriesSkipForks(t *testing.T) {
+
+	r1 := Repository{Namespace: "test1", CloneURL: "https://gitlab.com/u/r1", Name: "r1", Fork: true}
+	r2 := Repository{Namespace: "test2", CloneURL: "https://gitlab.com/u/r1", Name: "r1", Fork: false}
+
+	testRepositories := []*Repository{
+		&r1, &r2,
+	}
+	repoFilter := RepositoryFilter{
+		SkipForks: true,
+	}
+
+	fr := filterRepositories(testRepositories, &repoFilter)
+	if len(fr) != 1 {
+		t.Errorf("Expected 1 result, got %v\n", len(fr))
+	}
+
+	if !reflect.DeepEqual(*fr[0], r2) {
+		t.Errorf("Expected %+v, Got %+v\n", fr[0], r2)
+	}
+}

@@ -38,7 +38,7 @@ func main() {
 	syncTarget := flag.String("target", "", "Sync target")
 	ignorePrivate = flag.Bool("ignore-private", false, "Ignore private repositories/projects")
 	useHTTPSClone = flag.Bool("use-https-clone", false, "Use HTTPS for cloning instead of SSH")
-	skipForks = flag.Bool("skip-forks", false, "Ignore repositories which are forks")
+	skipForks := flag.Bool("skip-forks", false, "Ignore repositories which are forks")
 	cleanSync = flag.Bool("clean-sync", false, "Recreate repositories on sync")
 
 	// GitHub specific flags
@@ -73,11 +73,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	} else {
+		// perform any filtering of repositories as desired
+		repoFilter := RepositoryFilter{
+			SkipForks: *skipForks,
+		}
+		repos = filterRepositories(repos, &repoFilter)
 		log.Printf("Backing up %v repositories now..\n", len(repos))
 		for _, repo := range repos {
-			if repo.Fork && *skipForks {
-				continue
-			}
 			tokens <- true
 			wg.Add(1)
 			go func(repo *Repository) {
