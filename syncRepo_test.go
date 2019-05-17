@@ -85,21 +85,3 @@ func TestHelperCloneProcess(t *testing.T) {
 	}
 	os.Exit(0)
 }
-
-func TestSetupBackupDir(t *testing.T) {
-	appFS = afero.NewMemMapFs()
-	backupdir := setupBackupDir("/tmp", "github", "")
-	if backupdir != "/tmp/github.com" {
-		t.Errorf("Expected /tmp/github.com, Got %v", backupdir)
-	}
-
-	backupdir = setupBackupDir("/tmp", "github", "https://company.github.com")
-	if backupdir != "/tmp/company.github.com" {
-		t.Errorf("Expected /tmp/company.github.com, Got %v", backupdir)
-	}
-
-	backupdir = setupBackupDir("/tmp", "gitlab", "")
-	if backupdir != "/tmp/gitlab.com" {
-		t.Errorf("Expected /tmp/gitlab.com, Got %v", backupdir)
-	}
-}

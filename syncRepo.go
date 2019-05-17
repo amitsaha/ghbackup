@@ -13,7 +13,6 @@ import (
 	gitlab "github.com/xanzy/go-gitlab"
 
 	"github.com/google/go-github/github"
-	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/afero"
 )
 
@@ -69,38 +68,6 @@ func syncRepo(workDir string, syncTarget string, repo *Repository, wg *sync.Wait
 	if strings.HasPrefix(syncTarget, "github:///") {
 		handleSyncGithub(repo, workDir, syncTarget)
 	}
-}
-
-func setupBackupDir(backupDir string, service string, githostURL string) string {
-	if len(backupDir) == 0 {
-		homeDir, err := homedir.Dir()
-		if err == nil {
-			service = service + ".com"
-			backupDir = path.Join(homeDir, ".gitbackup", service)
-		} else {
-			log.Fatal("Could not determine home directory and backup directory not specified")
-		}
-	} else {
-		if len(githostURL) == 0 {
-			service = service + ".com"
-			backupDir = path.Join(backupDir, service)
-		} else {
-			u, err := url.Parse(githostURL)
-			if err != nil {
-				panic(err)
-			}
-			backupDir = path.Join(backupDir, u.Host)
-		}
-	}
-	_, err := appFS.Stat(backupDir)
-	if err != nil {
-		log.Printf("%s doesn't exist, creating it\n", backupDir)
-		err := appFS.MkdirAll(backupDir, 0771)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-	return backupDir
 }
 
 func handleSyncGitlab(repo *Repository, workspace string, target string) {

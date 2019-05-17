@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"log"
-	"strings"
 	"sync"
 )
 
@@ -54,10 +53,7 @@ func main() {
 		log.Fatal("Please specify the git service type: github, gitlab")
 	}
 
-	var workDir string
-	if len(*syncTarget) == 0 || strings.HasPrefix(*syncTarget, "file:///") {
-		workDir = setupBackupDir(*syncTarget, *service, *gitHostURL)
-	}
+	workDir := setupWorkDir(*syncTarget, *service, *gitHostURL)
 
 	tokens := make(chan bool, MaxConcurrentClones)
 	client := newClient(*service, *gitHostURL)
