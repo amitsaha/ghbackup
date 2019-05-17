@@ -22,35 +22,26 @@ var execCommand = exec.Command
 var appFS = afero.NewOsFs()
 var gitCommand = "git"
 
-// Check if we have a copy of the repo already, if
-// we do, we update the repo, else we do a fresh clone
-func backUp(backupDir string, repo *Repository, wg *sync.WaitGroup) ([]byte, error) {
+func getRepo(workDir string, repo *Repository, wg *sync.WaitGroup) ([]byte, error) {
 	defer wg.Done()
 
-	var syncLocation string
 	var stdoutStderr []byte
 	var err error
 
-	if strings.HasPrefix(backupDir, "gitlab:///") || strings.HasPrefix(backupDir, "github:///") {
-		syncLocation = backupDir
-		backupDir = "/tmp/gitbackupworkspace"
-	}
-	log.Printf("backupdir: %v\n", backupDir)
-
-	repoDir := path.Join(backupDir, repo.Namespace, repo.Name)
+	repoDir := path.Join(workDir, gitHostUsername, repo.Namespace, repo.Name)
 	_, cloneExistsErr := appFS.Stat(repoDir)
-	log.Printf("%s: %v\n", repoDir, cloneExistsErr)
 
 	if cloneExistsErr == nil && cleanSync != nil && !*cleanSync {
 		log.Printf("%s exists, updating. \n", repo.Name)
+
 		cmd := execCommand(gitCommand, "-C", repoDir, "pull")
 		stdoutStderr, err = cmd.CombinedOutput()
 	} else if cloneExistsErr == nil && cleanSync != nil && *cleanSync {
 		appFS.RemoveAll(repoDir)
 	}
 	if cloneExistsErr != nil || (cleanSync != nil && *cleanSync) {
+
 		log.Printf("Cloning %s\n", repo.Name)
-		log.Printf("%#v\n", repo)
 
 		if repo.Private && useHTTPSClone != nil && *useHTTPSClone && ignorePrivate != nil && !*ignorePrivate {
 			// Add username and token to the clone URL
@@ -66,14 +57,18 @@ func backUp(backupDir string, repo *Repository, wg *sync.WaitGroup) ([]byte, err
 		stdoutStderr, err = cmd.CombinedOutput()
 	}
 
-	if strings.HasPrefix(syncLocation, "gitlab:///") {
-		handleSyncGitlab(repo, backupDir, syncLocation)
-	}
-	if strings.HasPrefix(syncLocation, "github:///") {
-		handleSyncGithub(repo, backupDir, syncLocation)
-	}
-
 	return stdoutStderr, err
+}
+
+func syncRepo(workDir string, syncTarget string, repo *Repository, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	if strings.HasPrefix(syncTarget, "gitlab:///") {
+		handleSyncGitlab(repo, workDir, syncTarget)
+	}
+	if strings.HasPrefix(syncTarget, "github:///") {
+		handleSyncGithub(repo, workDir, syncTarget)
+	}
 }
 
 func setupBackupDir(backupDir string, service string, githostURL string) string {

@@ -27,7 +27,7 @@ func fakeCloneCommand(command string, args ...string) (cmd *exec.Cmd) {
 	return cmd
 }
 
-func TestBackup(t *testing.T) {
+func TestGetRepo(t *testing.T) {
 	var wg sync.WaitGroup
 
 	repo := Repository{Name: "testrepo", CloneURL: "git://foo.com/foo"}
@@ -45,7 +45,7 @@ func TestBackup(t *testing.T) {
 	// Test clone
 	execCommand = fakeCloneCommand
 	wg.Add(1)
-	stdoutStderr, err := backUp(backupDir, &repo, &wg)
+	stdoutStderr, err := getRepo(backupDir, &repo, &wg)
 	if err != nil {
 		t.Errorf("%s", stdoutStderr)
 	}
@@ -55,7 +55,7 @@ func TestBackup(t *testing.T) {
 	appFS.MkdirAll(repoDir, 0771)
 	execCommand = fakePullCommand
 	wg.Add(1)
-	stdoutStderr, err = backUp(backupDir, &repo, &wg)
+	stdoutStderr, err = getRepo(backupDir, &repo, &wg)
 	if err != nil {
 		t.Errorf("%s", stdoutStderr)
 	}

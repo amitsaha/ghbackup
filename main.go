@@ -54,11 +54,9 @@ func main() {
 		log.Fatal("Please specify the git service type: github, gitlab")
 	}
 
-	var backupDir string
+	var workDir string
 	if len(*syncTarget) == 0 || strings.HasPrefix(*syncTarget, "file:///") {
-		backupDir = setupBackupDir(*syncTarget, *service, *gitHostURL)
-	} else {
-		backupDir = *syncTarget
+		workDir = setupBackupDir(*syncTarget, *service, *gitHostURL)
 	}
 
 	tokens := make(chan bool, MaxConcurrentClones)
@@ -78,15 +76,24 @@ func main() {
 			SkipForks: *skipForks,
 		}
 		repos = filterRepositories(repos, &repoFilter)
-		log.Printf("Backing up %v repositories now..\n", len(repos))
+		log.Printf("Locally obtaining %v repositories now from %v.\n", len(repos), *service)
 		for _, repo := range repos {
 			tokens <- true
 			wg.Add(1)
 			go func(repo *Repository) {
-				stdoutStderr, err := backUp(backupDir, repo, &wg)
+				stdoutStderr, err := getRepo(workDir, repo, &wg)
 				if err != nil {
-					log.Printf("Error backing up %s: %s\n", repo.Name, stdoutStderr)
+					log.Printf("Error getting repo %s: %s\n", repo.Name, stdoutStderr)
 				}
+				<-tokens
+			}(repo)
+		}
+		log.Printf("Syncing %v repositories now to %v.\n", len(repos), *syncTarget)
+		for _, repo := range repos {
+			tokens <- true
+			wg.Add(1)
+			go func(repo *Repository) {
+				syncRepo(workDir, *syncTarget, repo, &wg)
 				<-tokens
 			}(repo)
 		}
