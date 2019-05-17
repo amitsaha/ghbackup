@@ -41,14 +41,14 @@ func backUp(backupDir string, repo *Repository, wg *sync.WaitGroup) ([]byte, err
 	_, cloneExistsErr := appFS.Stat(repoDir)
 	log.Printf("%s: %v\n", repoDir, cloneExistsErr)
 
-	if cloneExistsErr == nil && !*cleanSync {
+	if cloneExistsErr == nil && cleanSync != nil && !*cleanSync {
 		log.Printf("%s exists, updating. \n", repo.Name)
 		cmd := execCommand(gitCommand, "-C", repoDir, "pull")
 		stdoutStderr, err = cmd.CombinedOutput()
-	} else if cloneExistsErr == nil && *cleanSync {
+	} else if cloneExistsErr == nil && cleanSync != nil && *cleanSync {
 		appFS.RemoveAll(repoDir)
 	}
-	if cloneExistsErr != nil || *cleanSync {
+	if cloneExistsErr != nil || (cleanSync != nil && *cleanSync) {
 		log.Printf("Cloning %s\n", repo.Name)
 		log.Printf("%#v\n", repo)
 

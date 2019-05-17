@@ -57,7 +57,8 @@ func TestGetPublicGitHubRepositories(t *testing.T) {
 	defer teardown()
 
 	mux.HandleFunc("/user/repos", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, `[{"full_name": "test/r1", "id":1, "ssh_url": "https://github.com/u/r1", "name": "r1", "private": false}]`)
+		fmt.Fprint(w, `
+		[{"full_name": "test/r1", "id":1, "ssh_url": "https://github.com/u/r1", "name": "r1", "private": false, "fork": false}]`)
 	})
 
 	repos, err := getRepositories(GitHubClient, "github", "all", "", "")
@@ -76,7 +77,7 @@ func TestGetPrivateGitHubRepositories(t *testing.T) {
 	defer teardown()
 
 	mux.HandleFunc("/user/repos", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, `[{"full_name": "test/r1", "id":1, "ssh_url": "https://github.com/u/r1", "name": "r1", "private": true}]`)
+		fmt.Fprint(w, `[{"full_name": "test/r1", "id":1, "ssh_url": "https://github.com/u/r1", "name": "r1", "private": true, "fork": false}]`)
 	})
 
 	repos, err := getRepositories(GitHubClient, "github", "all", "", "")
