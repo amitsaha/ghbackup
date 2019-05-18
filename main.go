@@ -18,6 +18,7 @@ var skipForks *bool
 var gitHostUsername string
 var gitHostURL *string
 var cleanSync *bool
+var gitbackupState *bool
 
 func main() {
 
@@ -34,11 +35,13 @@ func main() {
 	// Generic flags
 	service := flag.String("service", "", "Git Hosted Service Name (github/gitlab)")
 	gitHostURL = flag.String("githost.url", "", "DNS of the custom Git host")
+	workDir := flag.String("work-dir", "", "Working directory for remote targets")
 	syncTarget := flag.String("target", "", "Sync target")
 	ignorePrivate = flag.Bool("ignore-private", false, "Ignore private repositories/projects")
 	useHTTPSClone = flag.Bool("use-https-clone", false, "Use HTTPS for cloning instead of SSH")
 	skipForks := flag.Bool("skip-forks", false, "Ignore repositories which are forks")
 	cleanSync = flag.Bool("clean-sync", false, "Recreate repositories on sync")
+	gitbackupState = flag.Bool("state", false, "Show current backup state")
 
 	// GitHub specific flags
 	githubRepoType := flag.String("github.repoType", "all", "Repo types to backup (all, owner, member)")
@@ -53,7 +56,7 @@ func main() {
 		log.Fatal("Please specify the git service type: github, gitlab")
 	}
 
-	workDir := setupWorkDir(*syncTarget, *service, *gitHostURL)
+	repoDir := setupRepoDir(*syncTarget, *workDir, *service, *gitHostURL)
 
 	tokens := make(chan bool, MaxConcurrentClones)
 	client := newClient(*service, *gitHostURL)
@@ -77,7 +80,7 @@ func main() {
 			tokens <- true
 			wg.Add(1)
 			go func(repo *Repository) {
-				stdoutStderr, err := getRepo(workDir, repo, &wg)
+				stdoutStderr, err := getRepo(repoDir, repo, &wg)
 				if err != nil {
 					log.Printf("Error getting repo %s: %s\n", repo.Name, stdoutStderr)
 				}
@@ -89,7 +92,7 @@ func main() {
 			tokens <- true
 			wg.Add(1)
 			go func(repo *Repository) {
-				syncRepo(workDir, *syncTarget, repo, &wg)
+				syncRepo(repoDir, *syncTarget, repo, &wg)
 				<-tokens
 			}(repo)
 		}
