@@ -33,7 +33,7 @@ func getRepo(workDir string, repo *Repository, wg *sync.WaitGroup) ([]byte, erro
 	if cloneExistsErr == nil && cleanSync != nil && !*cleanSync {
 		log.Printf("%s exists, updating. \n", repo.Name)
 
-		cmd := execCommand(gitCommand, "-C", repoDir, "pull")
+		cmd := execCommand(gitCommand, "-C", repoDir, "fetch", "origin", "*:*")
 		stdoutStderr, err = cmd.CombinedOutput()
 	} else if cloneExistsErr == nil && cleanSync != nil && *cleanSync {
 		appFS.RemoveAll(repoDir)
@@ -52,7 +52,7 @@ func getRepo(workDir string, repo *Repository, wg *sync.WaitGroup) ([]byte, erro
 			repo.CloneURL = u.Scheme + "://" + gitHostUsername + ":" + gitHostToken + "@" + u.Host + u.Path
 		}
 
-		cmd := execCommand(gitCommand, "clone", "--mirror", repo.CloneURL, repoDir)
+		cmd := execCommand(gitCommand, "clone", "--bare", repo.CloneURL, repoDir)
 		stdoutStderr, err = cmd.CombinedOutput()
 	}
 
@@ -100,8 +100,6 @@ func handleSyncGitlab(repo *Repository, workspace string, target string) {
 	if resp.StatusCode == 404 || *cleanSync {
 
 		log.Printf("Creating project in gitlab: %s\n", projectName)
-		log.Printf(repo.Namespace)
-		log.Printf(gitHostUsername)
 
 		// check if namespace is not a username and if it doesn't exist
 		// create it
@@ -186,7 +184,7 @@ func handleSyncGitlab(repo *Repository, workspace string, target string) {
 		project = p
 	}
 	// add remote
-	repoDir := path.Join(workspace, repo.Namespace, repo.Name)
+	repoDir := path.Join(workspace, gitHostUsername, repo.Namespace, repo.Name)
 	var stdoutStderr []byte
 
 	// Add username and token to the clone URL
@@ -225,11 +223,18 @@ func handleSyncGitlab(repo *Repository, workspace string, target string) {
 		}
 	}
 
-	cmd = execCommand(gitCommand, "-C", repoDir, "push", "--mirror", "gitlab")
+	cmd = execCommand(gitCommand, "-C", repoDir, "push", "--all", "gitlab")
 	stdoutStderr, err = cmd.CombinedOutput()
 	// FIXME: global error logging
 	if err != nil {
-		log.Printf("Error pushing to gitlab: %s\n", string(stdoutStderr))
+		log.Printf("Error pushing branches to gitlab: %s\n", string(stdoutStderr))
+	}
+
+	cmd = execCommand(gitCommand, "-C", repoDir, "push", "--tags", "gitlab")
+	stdoutStderr, err = cmd.CombinedOutput()
+	// FIXME: global error logging
+	if err != nil {
+		log.Printf("Error pushing tags to gitlab: %s\n", string(stdoutStderr))
 	}
 
 }
