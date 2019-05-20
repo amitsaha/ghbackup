@@ -1,0 +1,32 @@
+Test backup 
+===========
+
+For each service:
+
+- Create repo
+- Create a single commit
+- Create tag
+- Create  branch
+- Backup
+
+- Create new branch
+- Create new commit
+- Push
+- Backup
+
+Test sync
+=========
+
+For each service combination:
+
+- Create repo
+- Create a single commit
+- Create tag
+- Create  branch
+- Sync to remote
+
+- Create new branch
+- Create new commit
+- Push
+- Sync to remote
+
