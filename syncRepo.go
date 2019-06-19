@@ -66,7 +66,8 @@ func syncRepo(workDir string, syncTarget string, repo *Repository, wg *sync.Wait
 		handleSyncGitlab(repo, workDir, syncTarget)
 	}
 	if strings.HasPrefix(syncTarget, "github:///") {
-		handleSyncGithub(repo, workDir, syncTarget)
+		//handleSyncGithub(repo, workDir, syncTarget)
+		log.Fatalf("GitHub as sync target not yet supported")
 	}
 }
 
