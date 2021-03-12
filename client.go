@@ -48,10 +48,19 @@ func newClient(service string, gitHostURL string) interface{} {
 			log.Fatal("GITLAB_TOKEN environment variable not set")
 		}
 		gitHostToken = gitlabToken
-		client := gitlab.NewClient(nil, gitlabToken)
+
+		var client *gitlab.Client
+		var err error
+
 		if gitHostURLParsed != nil {
-			client.SetBaseURL(gitHostURLParsed.String())
+			client, err = gitlab.NewClient(gitlabToken, gitlab.WithBaseURL(gitHostURL))
+		} else {
+			client, err = gitlab.NewClient(gitlabToken)
 		}
+		if err != nil {
+			log.Fatal("Failed to create gitlab client")
+		}
+
 		return client
 	}
 	return nil
