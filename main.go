@@ -40,7 +40,7 @@ func main() {
 	useHTTPSClone = flag.Bool("use-https-clone", false, "Use HTTPS for cloning instead of SSH")
 
 	// GitHub specific flags
-	githubRepoType := flag.String("github.repoType", "all", "Repo types to backup (all, owner, member)")
+	githubRepoType := flag.String("github.repoType", "all", "Repo types to backup (all, owner, public, private, member)")
 
 	githubCreateUserMigration := flag.Bool("github.createUserMigration", false, "Download user data")
 
@@ -48,7 +48,7 @@ func main() {
 	githubWaitForMigrationComplete := flag.Bool("github.waitForUserMigration", true, "Wait for migration to complete")
 
 	// Gitlab specific flags
-	gitlabRepoVisibility := flag.String("gitlab.projectVisibility", "internal", "Visibility level of Projects to clone (internal, public, private)")
+	gitlabRepoVisibility := flag.String("gitlab.projectVisibility", "all", "Visibility level of Projects to clone (internal, public, private, all)")
 	gitlabProjectMembership := flag.String("gitlab.projectMembershipType", "all", "Project type to clone (all, owner, member)")
 
 	flag.Parse()
